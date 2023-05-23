@@ -2,11 +2,20 @@
 #include "device_launch_parameters.h"
 #endif
 
+#include "external/gif.h"
+
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <vector>
+
+
+namespace colors
+{
+    constexpr uint32_t black = 0;
+    constexpr uint32_t white = 0xffffffff;
+};
 
 
 void cuda_check_result(cudaError_t err, int line)
@@ -116,6 +125,43 @@ struct ELLMatrix
     std::vector<int> indices;
 };
 
+struct Image
+{
+    int width;
+    int height;
+
+    std::vector<uint32_t> data;
+};
+
+
+void write_pixel(Image& image, int x, int y, uint32_t color)
+{
+    image.data[y*image.width + x] = color;
+}
+
+Image initialize_image(int width, int height)
+{
+    Image img { width, height };
+    img.data.resize(width*height);
+
+    for (int i = 0; i < width*height; ++i)
+        img.data[i] = colors::white;
+
+    return img;
+}
+
+void draw_grid(Image& img, int cell_size)
+{
+    for (int y = 0; y < img.height; ++y)
+    {
+        for (int x = 0; x < img.width; ++x)
+        {
+            if (y % cell_size == 0 || x % cell_size == 0)
+                write_pixel(img, x, y, colors::black);
+        }
+    }
+}
+
 
 ELLMatrix initialize_matrix(int rows, int cols, int max_nnz_per_row)
 {
@@ -182,5 +228,21 @@ TimingData call_kernel()
 
 int main()
 {
-    call_kernel();
+    int width = 100;
+	int height = 200;
+
+	auto fileName = "bwgif.gif";
+	int delay = 100;
+	GifWriter g;
+	GifBegin(&g, fileName, width, height, delay);
+
+    auto img = initialize_image(width, height);
+	GifWriteFrame(&g, (const uint8_t*)img.data.data(), width, height, delay);
+
+    draw_grid(img, 10);
+	GifWriteFrame(&g, (const uint8_t*)img.data.data(), width, height, delay);
+
+	GifEnd(&g);
+
+	return 0;
 }
