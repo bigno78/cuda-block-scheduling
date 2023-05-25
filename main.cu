@@ -15,6 +15,19 @@
 #include <string>
 #include <vector>
 
+//############################################################################//
+//##                            CONSTANTS                                   ##//
+//############################################################################//
+
+namespace config
+{
+    constexpr int block_size = 256;
+    constexpr int cell_size = 4;
+    constexpr int max_nnz_per_row = 32;
+    constexpr int frames = 150;
+    constexpr int gif_length_seconds = 10;
+}
+
 
 //############################################################################//
 //##                            CUDA STUFF                                  ##//
@@ -244,8 +257,6 @@ void animate_grid(TimingData& data, int frames, int seconds,
 
     clock64_t frame_time = duration/frames;
 
-    constexpr int cell_size = 4;
-
     int dislay_width = data.grid_size_x;
     int dislay_height = data.grid_size_y;
     if (data.grid_size_y == 1)
@@ -254,8 +265,8 @@ void animate_grid(TimingData& data, int frames, int seconds,
         dislay_height = dislay_width;
     }
 
-    Image img = initialize_image(dislay_width*cell_size,
-                                 dislay_height*cell_size);
+    Image img = initialize_image(dislay_width*config::cell_size,
+                                 dislay_height*config::cell_size);
 
     int centi_seconds = 100*seconds;
     int gif_delay = centi_seconds/(frames - 1);
@@ -281,10 +292,10 @@ void animate_grid(TimingData& data, int frames, int seconds,
             int cell_x = i % dislay_width;
             int cell_y = i / dislay_width;
 
-            for (int x = 0; x < cell_size; ++x)
-                for (int y = 0; y < cell_size; ++y)
-                    write_pixel(img, cell_x*cell_size + x,
-                                cell_y*cell_size + y, color);
+            for (int x = 0; x < config::cell_size; ++x)
+                for (int y = 0; y < config::cell_size; ++y)
+                    write_pixel(img, cell_x*config::cell_size + x,
+                                cell_y*config::cell_size + y, color);
         }
 
         GifWriteFrame(&g, (const uint8_t*)img.data.data(), img.width,
@@ -319,10 +330,8 @@ ELLMatrix initialize_matrix(int rows, int cols, int max_nnz_per_row)
 TimingData measure_block_times(int grid_size_x, int grid_size_y)
 {
     int blocks = grid_size_x*grid_size_y;
-    int block_size = 256;
-
-    int n = blocks*block_size;
-    int max_nnz_per_row = 32;
+    int n = blocks*config::block_size;
+    int max_nnz_per_row = config::max_nnz_per_row;
 
     std::cout << "Creating matrix of size "
               << n << " x " << n << " with "
@@ -345,7 +354,7 @@ TimingData measure_block_times(int grid_size_x, int grid_size_y)
               << " with a total of " << blocks << " blocks...\n";
 
     dim3 grid_size(grid_size_x, grid_size_y);
-    kernel<<<grid_size, block_size>>>(n, n, max_nnz_per_row,
+    kernel<<<grid_size, config::block_size>>>(n, n, max_nnz_per_row,
                                       values_dptr.get(), indices_dptr.get(),
                                       x_dptr.get(), y_dptr.get(),
                                       start_times_dptr.get(),
@@ -393,15 +402,14 @@ int main()
     print_device_info();
     std::cout << "\n";
 
-    int frames = 250;
-    int seconds = 10;
-
     auto data_1d = measure_block_times(4096, 1);
-    animate_grid(data_1d, frames, seconds, "1D_grid.gif");
+    animate_grid(data_1d, config::frames, config::gif_length_seconds,
+                 "1D_grid.gif");
     std::cout << "\n";
 
     auto data_2d = measure_block_times(64, 64);
-    animate_grid(data_2d, frames, seconds, "2D_grid.gif");
+    animate_grid(data_2d, config::frames, config::gif_length_seconds,
+                 "2D_grid.gif");
     std::cout << "\n";
 
 	return 0;
