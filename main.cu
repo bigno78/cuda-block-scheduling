@@ -26,6 +26,7 @@ namespace config
     constexpr int max_nnz_per_row = 32;
     constexpr int frames = 200;
     constexpr int gif_length_seconds = 7;
+    constexpr int border_width = 2;
 }
 
 
@@ -187,6 +188,7 @@ uint32_t from_rgb(uint8_t r, uint8_t g, uint8_t b)
 namespace colors
 {
     constexpr uint32_t white = 0xffffffff;
+    constexpr uint32_t black = 0;
 
     // The color palette is taken from:
     // https://colorbrewer2.org/#type=qualitative&scheme=Set1&n=6
@@ -216,8 +218,23 @@ Image initialize_image(int width, int height)
     Image img { width, height };
     img.data.resize(width*height);
 
-    for (int i = 0; i < width*height; ++i)
-        img.data[i] = colors::white;
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            if (y < config::border_width
+                || y > height - config::border_width - 1
+                || x < config::border_width
+                || x > width - config::border_width - 1)
+            {
+                write_pixel(img, x, y, colors::black);
+            }
+            else
+            {
+                write_pixel(img, x, y, colors::white);
+            }
+        }
+    }
 
     return img;
 }
@@ -265,8 +282,9 @@ void animate_grid(TimingData& data, int frames, int seconds,
         dislay_height = dislay_width;
     }
 
-    Image img = initialize_image(dislay_width*config::cell_size,
-                                 dislay_height*config::cell_size);
+    int img_width = dislay_width*config::cell_size + 2*config::border_width;
+    int img_height = dislay_height*config::cell_size + 2*config::border_width;
+    Image img = initialize_image(img_width, img_height);
 
     int centi_seconds = 100*seconds;
     int gif_delay = centi_seconds/(frames - 1);
@@ -293,9 +311,17 @@ void animate_grid(TimingData& data, int frames, int seconds,
             int cell_y = i / dislay_width;
 
             for (int x = 0; x < config::cell_size; ++x)
+            {
                 for (int y = 0; y < config::cell_size; ++y)
-                    write_pixel(img, cell_x*config::cell_size + x,
-                                cell_y*config::cell_size + y, color);
+                {
+                    int pixel_x = cell_x*config::cell_size + x
+                                    + config::border_width;
+                    int pixel_y = cell_y*config::cell_size + y
+                                    + config::border_width;
+
+                    write_pixel(img, pixel_x, pixel_y, color);
+                }
+            }
         }
 
         GifWriteFrame(&g, (const uint8_t*)img.data.data(), img.width,
