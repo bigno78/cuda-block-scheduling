@@ -24,8 +24,8 @@ namespace config
     constexpr int block_size = 256;
     constexpr int cell_size = 4;
     constexpr int max_nnz_per_row = 32;
-    constexpr int frames = 150;
-    constexpr int gif_length_seconds = 10;
+    constexpr int frames = 200;
+    constexpr int gif_length_seconds = 7;
 }
 
 
